@@ -1,0 +1,21 @@
+{
+  "id": "env-config",
+  "name": {
+    "en": "Environment Config",
+    "zh": "环境配置"
+  },
+  "version": "1.0.0",
+  "type": "general",
+  "description": {
+    "en": "One-click environment configuration plugin for Docker QwenPaw. Manage and execute shell/python scripts to set up apt mirrors, SSH, proxy, opencode, and more.",
+    "zh": "Docker 部署 QwenPaw 的一键环境配置插件。通过管理 shell/python 脚本，配置 apt 镜像源、SSH 服务、代理、opencode 等功能。"
+  },
+  "author": "QwenPaw Community",
+  "entry": {
+    "backend": "plugin.py",
+    "frontend": "dist/index.js"
+  },
+  "dependencies": [],
+  "min_version": "0.1.0",
+  "meta": {}
+}

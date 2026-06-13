@@ -1,0 +1,15 @@
+{
+  "id": "apt-tsinghua",
+  "name": "更换清华 apt 源（Debian 12）",
+  "description": "将 Debian 12（bookworm）的 apt 源替换为清华 TUNA 镜像源；目标 deb822 文件为 /etc/apt/sources.list.d/debian.sources。",
+  "type": "shell",
+  "code": "#!/bin/bash\nset -euo pipefail\n\nexport DEBIAN_FRONTEND=noninteractive\n\nSOURCES_FILE=\"/etc/apt/sources.list.d/debian.sources\"\nKEYRING=\"/usr/share/keyrings/debian-archive-keyring.gpg\"\n\nif [ ! -f /etc/debian_version ]; then\n  echo \"错误：该脚本仅适用于 Debian，当前系统不是 Debian。\" >&2\n  exit 1\nfi\n\nsource /etc/os-release\nif [ \"${ID:-}\" != \"debian\" ] || [ \"${VERSION_ID:-}\" != \"12\" ]; then\n  echo \"错误：该脚本目标系统为 Debian 12（bookworm）。\" >&2\n  echo \"当前系统：${PRETTY_NAME:-unknown}\" >&2\n  exit 1\nfi\n\nCODENAME=\"${VERSION_CODENAME:-bookworm}\"\nif [ \"$CODENAME\" != \"bookworm\" ]; then\n  echo \"警告：检测到 Debian 12 的 codename 不是 bookworm（当前为 $CODENAME），仍按 bookworm 写入。\" >&2\nfi\n\nif [ ! -f \"$KEYRING\" ]; then\n  echo \"警告：未找到 $KEYRING，apt update 可能失败。请先确认 debian-archive-keyring 已安装。\" >&2\nfi\n\nif [ -f /etc/apt/sources.list ] && grep -Eq '^[[:space:]]*deb[[:space:]]' /etc/apt/sources.list; then\n  echo \"警告：/etc/apt/sources.list 仍有旧源配置；本脚本只管理 $SOURCES_FILE。\" >&2\nfi\n\nmkdir -p /etc/apt/sources.list.d\nif [ -f \"$SOURCES_FILE\" ]; then\n  cp -a \"$SOURCES_FILE\" \"$SOURCES_FILE.bak.$(date +%Y%m%d%H%M%S)\"\nfi\n\ncat > \"$SOURCES_FILE\" <<'SOURCES'\nTypes: deb\nURIs: https://mirrors.tuna.tsinghua.edu.cn/debian\nSuites: bookworm bookworm-updates bookworm-backports\nComponents: main contrib non-free non-free-firmware\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n\nTypes: deb\nURIs: https://mirrors.tuna.tsinghua.edu.cn/debian-security\nSuites: bookworm-security\nComponents: main contrib non-free non-free-firmware\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\nSOURCES\n\napt-get update -qq\n\necho \"APT source changed to Tsinghua mirror for Debian 12 (bookworm): $SOURCES_FILE\"\n",
+  "params": {},
+  "tags": [
+    "system",
+    "apt",
+    "debian"
+  ],
+  "os": "debian",
+  "readonly": true
+}

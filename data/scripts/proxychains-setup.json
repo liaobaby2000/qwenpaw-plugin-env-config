@@ -1,0 +1,54 @@
+{
+  "id": "proxychains-setup",
+  "name": "安装 proxychains 并配置代理",
+  "description": "安装 proxychains4/proxychains，配置 socks5/http 代理；支持通过参数指定代理地址、用户名和密码。",
+  "type": "shell",
+  "code": "#!/bin/bash\nset -euo pipefail\n\nexport DEBIAN_FRONTEND=noninteractive\n\napt-get update -qq\napt-get install -y -qq proxychains4 2>/dev/null || apt-get install -y -qq proxychains\n\n# 优先使用 proxychains 的配置文件；如果不存在，再使用旧版 proxychains 配置。\nif [ -f /etc/proxychains4.conf ]; then\n  PROXYCHAINS_CONF=\"/etc/proxychains4.conf\"\nelif [ -f /etc/proxychains.conf ]; then\n  PROXYCHAINS_CONF=\"/etc/proxychains.conf\"\nelse\n  PROXYCHAINS_CONF=\"/etc/proxychains.conf\"\nfi\n\n# proxychains 支持在代理行末尾追加用户名和密码：\n# socks5 127.0.0.1 1080 user pass\n# http 127.0.0.1 8080 user pass\nPROXY_CREDS=\"\"\nif [ -n \"{{proxy_user}}\" ]; then\n  PROXY_CREDS=\"{{proxy_user}}\"\n  if [ -n \"{{proxy_pass}}\" ]; then\n    PROXY_CREDS=\"$PROXY_CREDS {{proxy_pass}}\"\n  fi\nelif [ -n \"{{proxy_pass}}\" ]; then\n  echo \"警告：填写了代理密码但未填写代理用户名，proxychains 不会写入密码。\" >&2\nfi\n\nPROXY_LINE=\"{{proxy_type}} {{proxy_host}} {{proxy_port}}\"\nif [ -n \"$PROXY_CREDS\" ]; then\n  PROXY_LINE=\"$PROXY_LINE $PROXY_CREDS\"\nfi\n\ncat > \"$PROXYCHAINS_CONF\" << CONFIG\nstrict_chain\nproxy_dns\nremote_dns_subnet 224\ntcp_read_time_out 15000\ntcp_connect_time_out 8000\n[ProxyList]\n$PROXY_LINE\nCONFIG\n\necho \"proxychains configured: $PROXYCHAINS_CONF ($PROXY_LINE)\"\n",
+  "params": {
+    "proxy_type": {
+      "type": "select",
+      "label": "代理类型",
+      "required": true,
+      "default": "socks5",
+      "options": [
+        "socks4",
+        "socks5",
+        "http"
+      ]
+    },
+    "proxy_host": {
+      "type": "string",
+      "label": "代理地址",
+      "required": true,
+      "default": "127.0.0.1",
+      "options": []
+    },
+    "proxy_port": {
+      "type": "string",
+      "label": "代理端口",
+      "required": true,
+      "default": "1080",
+      "options": []
+    },
+    "proxy_user": {
+      "type": "string",
+      "label": "代理用户名（可选）",
+      "required": false,
+      "default": "user",
+      "options": []
+    },
+    "proxy_pass": {
+      "type": "password",
+      "label": "代理密码（可选）",
+      "required": false,
+      "default": "password",
+      "options": []
+    }
+  },
+  "tags": [
+    "network",
+    "proxy"
+  ],
+  "os": "linux",
+  "readonly": false
+}

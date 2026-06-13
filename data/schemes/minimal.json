@@ -1,0 +1,13 @@
+{
+  "id": "minimal",
+  "name": "最小配置",
+  "description": "仅更换 apt 源 + 安装 SSH 服务，适合快速远程访问。",
+  "steps": [
+    {
+      "script_id": "apt-tsinghua"
+    },
+    {
+      "script_id": "sshd-setup"
+    }
+  ]
+}

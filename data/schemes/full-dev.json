@@ -1,0 +1,19 @@
+{
+  "id": "full-dev",
+  "name": "完整开发环境",
+  "description": "配置 apt 源、SSH、代理、opencode，适合开发者使用。",
+  "steps": [
+    {
+      "script_id": "apt-tsinghua"
+    },
+    {
+      "script_id": "sshd-setup"
+    },
+    {
+      "script_id": "proxychains-setup"
+    },
+    {
+      "script_id": "opencode-setup"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "id": "opencode-setup",
+  "name": "安装 opencode 并配置 API Key",
+  "description": "从 GitHub releases 下载最新 opencode 二进制，安装到 /usr/local/bin，并配置默认 API key。",
+  "type": "shell",
+  "code": "#!/bin/bash\nset -e\n\n# Install opencode if not present\nif ! command -v opencode &>/dev/null; then\n  echo \"Downloading opencode...\"\n  LATEST=$(curl -sL https://api.github.com/repos/anomalyco/opencode/releases/latest | grep -oP '\"tag_name\": *\"v[^\"]+\"' | grep -oP 'v[0-9.]+')\n  URL=\"https://github.com/anomalyco/opencode/releases/download/${LATEST}/opencode-linux-x64.tar.gz\"\n  curl -sL \"$URL\" -o /tmp/opencode.tar.gz\n  tar xzf /tmp/opencode.tar.gz -C /usr/local/bin/\n  chmod 755 /usr/local/bin/opencode\n  rm -f /tmp/opencode.tar.gz\n  echo \"opencode ${LATEST} installed\"\nfi\n\n# Configure API key\nmkdir -p ~/.config/opencode/providers\ncat > ~/.config/opencode/providers/default.json << 'CONFIG'\n{\n  \"provider\": \"{{llm_provider}}\",\n  \"apiKey\": \"{{api_key}}\",\n  \"model\": \"{{model}}\",\n  \"baseUrl\": \"{{base_url}}\"\n}\nCONFIG\n\necho \"opencode configured with {{llm_provider}} / {{model}}\"\nopencode --version",
+  "params": {
+    "api_key": {
+      "type": "string",
+      "label": "API Key",
+      "default": "",
+      "required": true
+    },
+    "llm_provider": {
+      "type": "string",
+      "label": "LLM 提供商",
+      "default": "openai",
+      "required": true
+    },
+    "model": {
+      "type": "string",
+      "label": "模型名称",
+      "default": "gpt-4o",
+      "required": true
+    },
+    "base_url": {
+      "type": "string",
+      "label": "API 地址",
+      "default": "https://api.openai.com/v1",
+      "required": true
+    }
+  },
+  "tags": ["dev", "opencode"],
+  "os": "linux",
+  "readonly": true
+}
