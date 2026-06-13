@@ -59,19 +59,19 @@ function ExecutionPanel({ logs, onClose }) {
   }
 
   return React.createElement(Card, {
-    title: "\u6267\u884C\u8F93\u51FA",
+    title: "执行输出",
     size: "small",
-    extra: React.createElement(Button, { size: "small", onClick: onClose }, "\u5173\u95ED"),
+    extra: React.createElement(Button, { size: "small", onClick: onClose }, "关闭"),
     style: { fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace", fontSize: 12, maxHeight: 400, overflow: "auto" },
     bodyStyle: { padding: 8 }
   },
-    logs.length === 0 && React.createElement(Text, { type: "secondary" }, "\u7B49\u5F85\u6267\u884C..."),
+    logs.length === 0 && React.createElement(Text, { type: "secondary" }, "等待执行..."),
     logs.map((log, i) =>
       React.createElement("div", { key: i, style: { background: getBgColor(log.type), color: getTextColor(log.type), padding: "2px 6px", borderRadius: 2, marginBottom: 1, whiteSpace: "pre-wrap", wordBreak: "break-all" } },
         log.type === "info" && React.createElement(Badge, { status: "processing" }),
         log.type === "exit"
           ? React.createElement("span", { style: { color: log.code === 0 ? "#389e0d" : "#cf1322", fontWeight: 500 } },
-              log.code === 0 ? "\u2705 \u5B8C\u6210" : `\u274C \u9000\u51FA\u7801: ${log.code}`
+              log.code === 0 ? "✅ 完成" : `❌ 退出码: ${log.code}`
             )
           : log.line
       )
@@ -95,10 +95,10 @@ function ScriptRunner({ script, visible, onClose, onRun }) {
   if (!script) return null;
 
   return React.createElement(Modal, {
-    title: `\u8FD0\u884C: ${script.name}`, visible, onCancel: onClose,
+    title: `运行: ${script.name}`, visible, onCancel: onClose,
     footer: [
-      React.createElement(Button, { key: "cancel", onClick: onClose }, "\u53D6\u6D88"),
-      React.createElement(Button, { key: "run", type: "primary", onClick: () => onRun(script.id, params) }, "\u8FD0\u884C")
+      React.createElement(Button, { key: "cancel", onClick: onClose }, "取消"),
+      React.createElement(Button, { key: "run", type: "primary", onClick: () => onRun(script.id, params) }, "运行")
     ]
   },
     Object.keys(script.params || {}).length > 0
@@ -157,10 +157,10 @@ function SchemeRunner({ scheme, scripts, visible, onClose, onRun }) {
   };
 
   return React.createElement(Modal, {
-    title: `\u8FD0\u884C\u65B9\u6848: ${scheme.name}`, visible, onCancel: onClose, width: 680,
+    title: `运行方案: ${scheme.name}`, visible, onCancel: onClose, width: 680,
     footer: [
-      React.createElement(Button, { key: "cancel", onClick: onClose }, "\u53D6\u6D88"),
-      React.createElement(Button, { key: "run", type: "primary", onClick: () => onRun(scheme.id, {}, stepParams) }, "\u8FD0\u884C\u65B9\u6848")
+      React.createElement(Button, { key: "cancel", onClick: onClose }, "取消"),
+      React.createElement(Button, { key: "run", type: "primary", onClick: () => onRun(scheme.id, {}, stepParams) }, "运行方案")
     ]
   },
     React.createElement(Paragraph, null,
@@ -259,8 +259,8 @@ function ScriptEditor({ script, visible, onClose, onSave }) {
       React.createElement(Form.Item, { label: "代码", required: true },
         React.createElement(TextArea, { value: code, onChange: e => setCode(e.target.value), rows: 10, style: { fontFamily: "monospace" } })
       ),
-      React.createElement(Form.Item, { label: React.createElement("span", null, "参数定义 (JSON)", React.createElement("span", { style: { color: "#bbb", fontSize: 11, marginLeft: 8, fontWeight: "normal", fontFamily: "monospace" } }, `{"VAR": {"type": "text", "label": "...", "required": false, "default": ""}}`) ) },
-        React.createElement(TextArea, { value: paramsJson, onChange: e => setParamsJson(e.target.value), rows: 3, placeholder: '{"VAR": {"type": "text", "label": "...", "required": false, "default": ""}}' })
+      React.createElement(Form.Item, { label: React.createElement("span", null, "参数定义 (JSON)", React.createElement("span", { style: { color: "#bbb", fontSize: 11, marginLeft: 8, fontWeight: "normal", fontFamily: "monospace" } }, `{"VAR1": {"type": "string、textarea、select、password", "label": "...", "required": true/false, "default": "", "options": []}}`) ) },
+        React.createElement(TextArea, { value: paramsJson, onChange: e => setParamsJson(e.target.value), rows: 3, placeholder: '{"VAR1": {"type": "string、textarea、select、password", "label": "...", "required": true/false, "default": "", "options": []}, "VAR2": {"type": "string、textarea、select、password", "label": "...", "required": true/false, "default": "", "options": []}}' })
       )
     )
   );
@@ -383,40 +383,40 @@ function ScriptEditRunModal({ script, visible, onClose, onSave, onSaveAs, onRun 
   };
 
   return React.createElement(Modal, {
-    title: `\u7F16\u8F91: ${script.name}`,
+    title: `编辑: ${script.name}`,
     visible, onCancel: onClose, width: 800,
     footer: [
-      React.createElement(Button, { key: "cancel", onClick: onClose }, "\u53D6\u6D88"),
-      !showSaveAs && React.createElement(Button, { key: "saveas", onClick: () => setShowSaveAs(true) }, "\u53E6\u5B58\u4E3A"),
-      showSaveAs && React.createElement(Button, { key: "saveas-confirm", type: "default", onClick: handleSaveAs }, "\u786E\u8BA4\u53E6\u5B58\u4E3A"),
-      React.createElement(Button, { key: "save", icon: "\uD83D\uDCBE", onClick: handleSave }, "\u4FDD\u5B58"),
-      React.createElement(Button, { key: "run", type: "primary", icon: "\u25B6\uFE0F", onClick: () => onRun(script.id, params, code) }, "\u8FD0\u884C")
+      React.createElement(Button, { key: "cancel", onClick: onClose }, "取消"),
+      !showSaveAs && React.createElement(Button, { key: "saveas", onClick: () => setShowSaveAs(true) }, "另存为"),
+      showSaveAs && React.createElement(Button, { key: "saveas-confirm", type: "default", onClick: handleSaveAs }, "确认另存为"),
+      React.createElement(Button, { key: "save", icon: "💾", onClick: handleSave }, "保存"),
+      React.createElement(Button, { key: "run", type: "primary", icon: "▶️", onClick: () => onRun(script.id, params, code) }, "运行")
     ]
   },
     React.createElement(Form, { layout: "vertical" },
       showSaveAs && React.createElement("div", { style: { background: "#fffbe6", border: "1px solid #ffe58f", borderRadius: 6, padding: "12px 16px", marginBottom: 12 } },
         React.createElement(Row, { gutter: 12 },
           React.createElement(Col, { span: 12 },
-            React.createElement(Form.Item, { label: "\u65B0\u811A\u672C ID", required: true, style: { marginBottom: 0 } },
+            React.createElement(Form.Item, { label: "新脚本 ID", required: true, style: { marginBottom: 0 } },
               React.createElement(Input, {
                 value: newId,
                 onChange: e => setNewId(e.target.value),
-                placeholder: "\u8F93\u5165\u552F\u4E00\u6807\u8BC6"
+                placeholder: "输入唯一标识"
               })
             )
           ),
           React.createElement(Col, { span: 12 },
-            React.createElement(Form.Item, { label: "\u65B0\u811A\u672C\u540D\u79F0", required: true, style: { marginBottom: 0 } },
+            React.createElement(Form.Item, { label: "新脚本名称", required: true, style: { marginBottom: 0 } },
               React.createElement(Input, {
                 value: newName,
                 onChange: e => setNewName(e.target.value),
-                placeholder: "\u8F93\u5165\u663E\u793A\u540D\u79F0"
+                placeholder: "输入显示名称"
               })
             )
           )
         )
       ),
-      React.createElement(Form.Item, { label: "\u811A\u672C\u4EE3\u7801\uFF08\u53EF\u7F16\u8F91\uFF09" },
+      React.createElement(Form.Item, { label: "脚本代码（可编辑）" },
         React.createElement(TextArea, {
           value: code,
           onChange: e => setCode(e.target.value),
@@ -426,7 +426,7 @@ function ScriptEditRunModal({ script, visible, onClose, onSave, onSaveAs, onRun 
       ),
       Object.keys(script.params || {}).length > 0 && [
         React.createElement(Divider, { key: "divider" }),
-        React.createElement("div", { key: "params-title", style: { marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#333" } }, "\u53C2\u6570"),
+        React.createElement("div", { key: "params-title", style: { marginBottom: 8, fontSize: 13, fontWeight: 500, color: "#333" } }, "参数"),
         ...Object.entries(script.params).map(([key, param]) =>
           React.createElement("div", { key, style: { marginBottom: 8 } },
             React.createElement("label", { style: { display: "block", marginBottom: 4, fontSize: 12, color: "#666" } },
@@ -438,7 +438,9 @@ function ScriptEditRunModal({ script, visible, onClose, onSave, onSaveAs, onRun 
                 )
               : param.type === "password"
                 ? React.createElement(Input.Password, { value: params[key], onChange: e => setParams(p => ({ ...p, [key]: e.target.value })) })
-                : React.createElement(Input, { value: params[key], onChange: e => setParams(p => ({ ...p, [key]: e.target.value })) })
+                : param.type === "textarea"
+                  ? React.createElement(TextArea, { value: params[key], rows: 3, onChange: e => setParams(p => ({ ...p, [key]: e.target.value })) })
+                  : React.createElement(Input, { value: params[key], onChange: e => setParams(p => ({ ...p, [key]: e.target.value })) })
           )
         )
       ]
@@ -628,10 +630,10 @@ function EnvConfigPage() {
     {
       title: "操作", key: "action", width: 220,
       render: (_, record) => React.createElement(Space, null,
-        React.createElement(Button, { size: "small", type: "primary", onClick: () => setRunScript(record), loading: runningScriptId === record.id }, "\u8FD0\u884C"),
-        React.createElement(Button, { size: "small", onClick: () => setEditRunScript(record) }, "\u7F16\u8F91"),
-        !record.readonly && React.createElement(Popconfirm, { title: "\u786E\u5B9A\u5220\u9664\uFF1F", onConfirm: () => deleteScript(record.id) },
-          React.createElement(Button, { size: "small", danger: true }, "\u5220\u9664")
+        React.createElement(Button, { size: "small", type: "primary", onClick: () => setRunScript(record), loading: runningScriptId === record.id }, "运行"),
+        React.createElement(Button, { size: "small", onClick: () => setEditRunScript(record) }, "编辑"),
+        !record.readonly && React.createElement(Popconfirm, { title: "确定删除？", onConfirm: () => deleteScript(record.id) },
+          React.createElement(Button, { size: "small", danger: true }, "删除")
         )
       )
     }
@@ -663,13 +665,13 @@ function EnvConfigPage() {
 
   return React.createElement("div", { style: { padding: 16 } },
     React.createElement(Title, { level: 4, style: { marginBottom: 8 } },
-      "\u2699\uFE0F \u73AF\u5883\u914D\u7F6E",
+      "⚙️ 环境配置",
       React.createElement("span", { style: { fontSize: 13, fontWeight: "normal", marginLeft: 12, color: "#888" } },
         "管理并一键执行环境配置脚本"
       )
     ),
     React.createElement(Tabs, { defaultActiveKey: "scripts" },
-      React.createElement(Tabs.TabPane, { tab: "\uD83D\uDCDC \u914D\u7F6E\u811A\u672C", key: "scripts" },
+      React.createElement(Tabs.TabPane, { tab: "📜 配置脚本", key: "scripts" },
         React.createElement(Card, { size: "small", extra: React.createElement(Button, { type: "primary", size: "small", onClick: () => { setEditScript(null); setShowEditor(true); } }, "新建脚本") },
           React.createElement(Table, {
             dataSource: scripts, columns: scriptColumns, rowKey: "id",
@@ -677,7 +679,7 @@ function EnvConfigPage() {
           })
         )
       ),
-      React.createElement(Tabs.TabPane, { tab: "\uD83D\uDCCB \u914D\u7F6E\u65B9\u6848", key: "schemes" },
+      React.createElement(Tabs.TabPane, { tab: "📋 配置方案", key: "schemes" },
         React.createElement(Card, { size: "small", extra: React.createElement(Button, { type: "primary", size: "small", onClick: () => { setEditScheme(null); setShowSchemeEditor(true); } }, "新建方案") },
           React.createElement(Table, {
             dataSource: schemes, columns: schemeColumns, rowKey: "id",

@@ -1,6 +1,7 @@
 # Environment Config Plugin for QwenPaw
 
 一键环境配置插件 — 通过管理 shell/python 脚本和配置方案，快速配置 Docker QwenPaw 环境，可用于docker部署方式下升级后的快速恢复原来的环境。
+适用场景举例：QwenPaw升级频繁，采用docker compose部署，平时的需求包括通过sshd访问QwenPaw镜像内部及进行一些国内源等，提前映射好22端口，当镜像更新后运行一下配置方案或脚本即可，有什么其他需要的可以自己新建脚本。
 
 ## 功能
 
@@ -15,7 +16,7 @@
 | ID | 名称 | 描述 |
 |---|---|---|
 | `apt-tsinghua` | 更换清华 apt 源 | 面向 Debian 12（bookworm），写入 `/etc/apt/sources.list.d/debian.sources` |
-| `sshd-setup` | 安装并配置 SSH 服务 | 设置 root 密码、公钥认证，并通过 supervisord 实现容器重启后自动启动 |
+| `sshd-setup` | 安装并配置 SSH 服务 | 设置 root 密码、公私钥认证，并通过 supervisord 实现容器重启后自动启动 |
 | `proxychains-setup` | 安装 proxychains | 配置 socks4/socks5/http 代理，支持用户名和密码参数 |
 | `opencode-setup` | 安装 opencode | 从 GitHub 下载最新版，配置 LLM API Key |
 
