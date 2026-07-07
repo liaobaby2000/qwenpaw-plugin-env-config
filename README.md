@@ -26,6 +26,8 @@
 | `qwen-code-setup` | 安装并配置 Qwen Code ACP Agent | 安装 `qwen`，写入 `qwen_code` ACP runner，可配置 OpenAI-compatible API Key、base URL 和模型 |
 | `claude-code-setup` | 安装并配置 Claude Agent ACP | 安装 `claude-agent-acp`，写入 `claude_code` ACP runner，可配置 `ANTHROPIC_API_KEY` |
 | `codex-setup` | 安装并配置 Codex ACP Agent | 安装 `codex-acp`，写入 `codex` ACP runner，可配置 `OPENAI_API_KEY` |
+| `dockercli` | 安装并配置 dockercli | 安装docker-cli和docker compose，不安装docker，qwenpaw容器通过-v /var/run/docker.sock:/var/run/docker.sock挂载到宿主机，对docker进行使用。 |
+| `git` | 配置git | git config --global user.email git config --global user.name |
 
 ## 内置方案
 
