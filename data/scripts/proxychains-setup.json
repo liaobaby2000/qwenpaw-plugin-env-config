@@ -20,28 +20,28 @@
       "type": "string",
       "label": "代理地址",
       "required": true,
-      "default": "127.0.0.1",
+      "default": "1.1.1.1",
       "options": []
     },
     "proxy_port": {
       "type": "string",
       "label": "代理端口",
       "required": true,
-      "default": "1080",
+      "default": "10080",
       "options": []
     },
     "proxy_user": {
       "type": "string",
       "label": "代理用户名（可选）",
       "required": false,
-      "default": "user",
+      "default": "mysocket",
       "options": []
     },
     "proxy_pass": {
       "type": "password",
       "label": "代理密码（可选）",
       "required": false,
-      "default": "password",
+      "default": "xxxx",
       "options": []
     }
   },

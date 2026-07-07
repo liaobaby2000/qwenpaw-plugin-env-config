@@ -1,0 +1,79 @@
+{
+  "id": "vscode-setup",
+  "name": "安装并配置 VS Code",
+  "description": "安装 VS Code 桌面客户端，并配置 localmodel 与 Volcano Engine Coding Plan 两个大模型。",
+  "type": "shell",
+  "code": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\nINSTALL_METHOD=\"{{install_method}}\"\nCONFIGURE_MODELS=\"{{configure_models}}\"\n\nLOCALMODEL_BASE_URL=\"{{localmodel_base_url}}\"\nLOCALMODEL_API_KEY=\"{{localmodel_api_key}}\"\nLOCALMODEL_MODEL=\"{{localmodel_model}}\"\n\nVOLCANO_BASE_URL=\"{{volcano_base_url}}\"\nVOLCANO_API_KEY=\"{{volcano_api_key}}\"\nVOLCANO_MODEL=\"{{volcano_model}}\"\n\nif [[ \"$INSTALL_METHOD\" == \"apt\" ]]; then\n  echo \"Installing VS Code via Microsoft apt repository...\"\n  apt-get update -qq\n  apt-get install -y wget gpg apt-transport-https ca-certificates software-properties-common\n  wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/packages.microsoft.gpg\n  install -D -o root -g root -m 644 /tmp/packages.microsoft.gpg /usr/share/keyrings/packages.microsoft.gpg\n  sh -c 'echo \"deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main\" > /etc/apt/sources.list.d/vscode.list'\n  rm -f /tmp/packages.microsoft.gpg\n  apt-get update -qq\n  apt-get install -y code\n  hash -r\nelif [[ \"$INSTALL_METHOD\" == \"deb-url\" ]]; then\n  echo \"Installing VS Code from deb URL: $INSTALL_METHOD\"\n  curl -fsSL \"$INSTALL_METHOD\" -o /tmp/vscode.deb\n  apt-get update -qq\n  apt-get install -y /tmp/vscode.deb\n  rm -f /tmp/vscode.deb\n  hash -r\nelif [[ \"$INSTALL_METHOD\" == \"skip\" ]]; then\n  echo \"Skipping VS Code installation.\"\nelse\n  echo \"ERROR: unsupported install_method=$INSTALL_METHOD\" >&2\n  exit 1\nfi\n\nif [[ \"$CONFIGURE_MODELS\" != \"true\" ]]; then\n  echo \"Skipping VS Code model configuration because configure_models=false.\"\n  exit 0\nfi\n\nCONFIG_DIR=\"$HOME/.config/Code/User\"\nmkdir -p \"$CONFIG_DIR\"\n\npython3 - \"$CONFIG_DIR\" \"$LOCALMODEL_BASE_URL\" \"$LOCALMODEL_API_KEY\" \"$LOCALMODEL_MODEL\" \"$VOLCANO_BASE_URL\" \"$VOLCANO_API_KEY\" \"$VOLCANO_MODEL\" <<'PY'\nimport json\nimport sys\nfrom pathlib import Path\n\nconfig_dir = Path(sys.argv[1])\nlocal_base = sys.argv[2]\nlocal_key = sys.argv[3]\nlocal_model = sys.argv[4]\nvolcano_base = sys.argv[5]\nvolcano_key = sys.argv[6]\nvolcano_model = sys.argv[7]\n\nsettings_path = config_dir / \"settings.json\"\nif settings_path.exists():\n    try:\n        settings = json.loads(settings_path.read_text(encoding=\"utf-8\"))\n    except Exception:\n        settings = {}\nelse:\n    settings = {}\n\nsettings.setdefault(\"qwenpaw.llm.providers\", [])\nproviders = settings[\"qwenpaw.llm.providers\"]\n\ndef replace_or_append(items, item):\n    for i, existing in enumerate(items):\n        if existing.get(\"id\") == item[\"id\"]:\n            items[i] = item\n            return\n    items.append(item)\n\nreplace_or_append(providers, {\n    \"id\": \"localmodel\",\n    \"name\": \"localmodel\",\n    \"baseUrl\": local_base,\n    \"apiKey\": local_key,\n    \"model\": local_model,\n})\n\nreplace_or_append(providers, {\n    \"id\": \"volcano-coding-plan\",\n    \"name\": \"Volcano Engine Coding Plan\",\n    \"baseUrl\": volcano_base,\n    \"apiKey\": volcano_key,\n    \"model\": volcano_model,\n})\n\nsettings[\"qwenpaw.llm.defaultProvider\"] = settings.get(\"qwenpaw.llm.defaultProvider\") or \"localmodel\"\nsettings[\"qwenpaw.llm.defaultModel\"] = settings.get(\"qwenpaw.llm.defaultModel\") or local_model\n\nsettings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + \"\\n\", encoding=\"utf-8\")\nsettings_path.chmod(0o600)\nprint(f\"VS Code model configuration written to {settings_path}\")\nPY\necho \"alias code='/usr/bin/code --no-sandbox --user-data-dir=/app/working/vscode'\" >> /root/.bashrc\necho \"VS Code setup complete.\"\n",
+  "params": {
+    "install_method": {
+      "type": "select",
+      "label": "安装方式",
+      "required": true,
+      "default": "apt",
+      "options": [
+        "apt",
+        "deb-url",
+        "skip"
+      ]
+    },
+    "configure_models": {
+      "type": "select",
+      "label": "配置大模型",
+      "required": true,
+      "default": "true",
+      "options": [
+        "true",
+        "false"
+      ]
+    },
+    "localmodel_base_url": {
+      "type": "string",
+      "label": "localmodel Base URL",
+      "required": true,
+      "default": "http://127.0.0.1:8020/v1",
+      "options": []
+    },
+    "localmodel_api_key": {
+      "type": "string",
+      "label": "localmodel API Key",
+      "required": true,
+      "default": "apikey-cqwenpaw",
+      "options": []
+    },
+    "localmodel_model": {
+      "type": "string",
+      "label": "localmodel Model",
+      "required": true,
+      "default": "Qwen3.6-27B-MTP-UD-Q4_K_XL.gguf",
+      "options": []
+    },
+    "volcano_base_url": {
+      "type": "string",
+      "label": "Volcano Engine Coding Plan Base URL",
+      "required": true,
+      "default": "https://ark.cn-beijing.volces.com/api/coding/v3",
+      "options": []
+    },
+    "volcano_api_key": {
+      "type": "string",
+      "label": "Volcano Engine API Key",
+      "required": true,
+      "default": "apikey-cqwenpaw",
+      "options": []
+    },
+    "volcano_model": {
+      "type": "string",
+      "label": "Volcano Engine Model",
+      "required": true,
+      "default": "glm-5.1",
+      "options": []
+    }
+  },
+  "tags": [
+    "ide",
+    "vscode",
+    "llm"
+  ],
+  "os": "linux",
+  "readonly": false
+}

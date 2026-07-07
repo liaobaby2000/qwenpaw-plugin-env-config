@@ -1,0 +1,52 @@
+{
+  "id": "rdp-desktop-setup",
+  "name": "安装并配置 RDP 桌面（mstsc 3389）",
+  "description": "在 QwenPaw Docker 容器中安装 xrdp、x11vnc、xfce4 等组件，把现有 Xvfb/xfce4 桌面通过 RDP 暴露出来。配置完成后，可用 Windows 远程桌面连接容器 3389 端口，实时查看 QwenPaw/browser-use 的桌面操作。注意：Docker 启动时仍需要映射 3389 端口，例如 -p 3389:3389 或使用 host 网络。",
+  "type": "shell",
+  "code": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\nRDP_USER=\"{{rdp_user}}\"\nRDP_PASS=\"{{rdp_password}}\"\nRDP_PORT=\"{{rdp_port}}\"\nVNC_PORT=\"{{vnc_port}}\"\nXFCE_DISPLAY=\"{{xfce_display}}\"\n\nif [ -z \"$RDP_USER\" ] || [ -z \"$RDP_PASS\" ]; then\n  echo \"rdp_user and rdp_password are required.\"\n  exit 1\nfi\n\napt-get update -qq\napt-get install -y -qq --no-install-recommends \\\n  supervisor \\\n  apt-utils \\\n  xrdp \\\n  x11vnc \\\n  xfce4 \\\n  dbus-x11\n\n\n# Create/login user used by xrdp authentication.\nif [ \"$RDP_USER\" = \"root\" ]; then\n  echo \"root:$RDP_PASS\" | chpasswd\n  cat > \"/root/.xsession\" <<'XSESSION'\n#!/bin/sh\nexport XDG_CURRENT_DESKTOP=XFCE\nexport XDG_SESSION_TYPE=x11\nexec startxfce4\nXSESSION\n  chmod +x \"/root/.xsession\"\nelse\n  if ! id \"$RDP_USER\" >/dev/null 2>&1; then\n    useradd -m -s /bin/bash \"$RDP_USER\"\n  else\n    usermod -d \"/home/$RDP_USER\" -s /bin/bash \"$RDP_USER\" || true\n  fi\n  echo \"$RDP_USER:$RDP_PASS\" | chpasswd\n  # If the container later falls back to an Xorg/xrdp session, make XFCE the session.\n  cat > \"/home/$RDP_USER/.xsession\" <<'XSESSION'\n#!/bin/sh\nexport XDG_CURRENT_DESKTOP=XFCE\nexport XDG_SESSION_TYPE=x11\nexec startxfce4\nXSESSION\n  chmod +x \"/home/$RDP_USER/.xsession\"\n  chown -R \"$RDP_USER:$RDP_USER\" \"/home/$RDP_USER\"\nfi\n\n\n\n\n# xrdp login screen: expose only the existing Xvfb/xfce4 desktop via x11vnc.\npython3 - <<PY\nfrom pathlib import Path\nimport re\n\nrdp_port = \"$RDP_PORT\"\nvnc_port = \"$VNC_PORT\"\npath = Path(\"/etc/xrdp/xrdp.ini\")\ntext = path.read_text()\n\n# Set RDP listen port.\ntext = re.sub(r\"(?m)^port\\s*=.*\", f\"port={rdp_port}\", text, count=1)\n\n# Comment out the default Xorg backend so users usually only see the shared desktop option.\ndef comment_section(name: str, content: str) -> str:\n    pattern = re.compile(rf\"(?ms)^\\[{re.escape(name)}\\].*?(?=^\\[|\\Z)\")\n    def repl(match: re.Match) -> str:\n        return \"\\n\".join((\";\" + line) if line.strip() else line for line in match.group(0).splitlines())\n    if pattern.search(content):\n        return pattern.sub(repl, content)\n    return content\n\ntext = comment_section(\"Xorg\", text)\n\nxvnc = f\"\"\"[Xvnc]\nname=Existing XFCE Desktop (Xvfb :1)\nlib=libvnc.so\nip=127.0.0.1\nport={vnc_port}\ncode=20\n\"\"\"\ntext = re.sub(r\"(?ms)^\\[Xvnc\\].*?(?=^\\[|\\Z)\", xvnc, text)\nif \"[Xvnc]\" not in text:\n    text += \"\\n\" + xvnc\n\npath.write_text(text)\nPY\n\n# Share the existing Xvfb display (:1 by default) to localhost only; xrdp connects to it locally.\ncat >> /etc/supervisor/conf.d/supervisord.conf.template <<CONF\n\n[program:x11vnc]\ncommand=/bin/sh -c 'export DISPLAY=\"${XFCE_DISPLAY}\"; XSOCK=\"/tmp/.X11-unix/X\\${DISPLAY#:}\"; for i in \\$(seq 1 200); do [ -S \"\\$XSOCK\" ] && break; sleep 0.1; done; exec x11vnc -display \"\\$DISPLAY\" -forever -shared -rfbport ${VNC_PORT} -listen 127.0.0.1 -nopw'\nautostart=true\nautorestart=true\npriority=20\nstopasgroup=true\nkillasgroup=true\nstderr_logfile=/var/log/x11vnc.err.log\nstdout_logfile=/var/log/x11vnc.out.log\n\n[program:xrdp-sesman]\ncommand=/usr/sbin/xrdp-sesman -n\nautostart=true\nautorestart=true\npriority=21\nstopasgroup=true\nkillasgroup=true\nstderr_logfile=/var/log/xrdp-sesman.err.log\nstdout_logfile=/var/log/xrdp-sesman.out.log\n\n[program:xrdp]\ncommand=/usr/sbin/xrdp -n\nautostart=true\nautorestart=true\npriority=22\nstopasgroup=true\nkillasgroup=true\nstderr_logfile=/var/log/xrdp.err.log\nstdout_logfile=/var/log/xrdp.out.log\nCONF\n\n# Allow local users to attach to the shared X display if any helper process needs it.\nif command -v xhost >/dev/null 2>&1 && [ -n \"${DISPLAY:-}\" ]; then\n  xhost +SI:localuser:\"$RDP_USER\" >/dev/null 2>&1 || true\nfi\n\n# Reload supervisord if it is already running.\nif command -v supervisorctl >/dev/null 2>&1; then\n  supervisorctl reread >/dev/null 2>&1 || true\n  supervisorctl update >/dev/null 2>&1 || true\n  supervisorctl start x11vnc >/dev/null 2>&1 || true\n  supervisorctl start xrdp-sesman >/dev/null 2>&1 || true\n  supervisorctl start xrdp >/dev/null 2>&1 || true\nfi\n\n# If supervisord is not running yet, the next container start will pick up the new config.\necho \"RDP desktop setup complete.\"\necho \"  RDP user: $RDP_USER\"\necho \"  RDP port: $RDP_PORT\"\necho \"  x11vnc port: $VNC_PORT (localhost only)\"\necho \"  Shared X display: $XFCE_DISPLAY\"\necho \"\"\necho \"From Windows: mstsc -> ${RDP_HOST:-<container-ip-or-host>}:$RDP_PORT\"\necho \"Make sure Docker publishes the RDP port, for example: docker run -p 3389:3389 ...\"\n",
+  "params": {
+    "rdp_user": {
+      "type": "input",
+      "label": "RDP 登录用户名",
+      "required": true,
+      "default": "root",
+      "options": []
+    },
+    "rdp_password": {
+      "type": "password",
+      "label": "RDP 登录密码",
+      "required": true,
+      "default": "xxxx",
+      "options": []
+    },
+    "rdp_port": {
+      "type": "input",
+      "label": "RDP 端口",
+      "required": true,
+      "default": "3389",
+      "options": []
+    },
+    "vnc_port": {
+      "type": "input",
+      "label": "本地 x11vnc 端口（仅 localhost）",
+      "required": true,
+      "default": "8091",
+      "options": []
+    },
+    "xfce_display": {
+      "type": "input",
+      "label": "现有 Xvfb/xfce4 DISPLAY",
+      "required": true,
+      "default": ":1",
+      "options": []
+    }
+  },
+  "tags": [
+    "system",
+    "desktop",
+    "rdp",
+    "browser-use"
+  ],
+  "os": "linux",
+  "readonly": false
+}

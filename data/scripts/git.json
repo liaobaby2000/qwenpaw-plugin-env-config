@@ -1,0 +1,26 @@
+{
+  "id": "git",
+  "name": "git",
+  "description": "git配置相关",
+  "type": "shell",
+  "code": "git config --global user.email \"{{email}}\"\ngit config --global user.name \"{{name}}\"\n",
+  "params": {
+    "email": {
+      "type": "text",
+      "label": "email",
+      "required": true,
+      "default": "xxxx@qq.com",
+      "options": []
+    },
+    "name": {
+      "type": "text",
+      "label": "name",
+      "required": true,
+      "default": "xxxx",
+      "options": []
+    }
+  },
+  "tags": [],
+  "os": "",
+  "readonly": false
+}

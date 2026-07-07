@@ -8,29 +8,36 @@
     "api_key": {
       "type": "string",
       "label": "API Key",
-      "default": "",
-      "required": true
+      "required": true,
+      "default": "apikey-qwenpaw-opencode",
+      "options": []
     },
     "llm_provider": {
       "type": "string",
       "label": "LLM 提供商",
-      "default": "openai",
-      "required": true
+      "required": true,
+      "default": "llamacpp",
+      "options": []
     },
     "model": {
       "type": "string",
       "label": "模型名称",
-      "default": "gpt-4o",
-      "required": true
+      "required": true,
+      "default": "Qwen3.6-27B-MTP-UD-Q4_K_XL.gguf",
+      "options": []
     },
     "base_url": {
       "type": "string",
       "label": "API 地址",
-      "default": "https://api.openai.com/v1",
-      "required": true
+      "required": true,
+      "default": "http://192.168.101.204:8020/v1",
+      "options": []
     }
   },
-  "tags": ["dev", "opencode"],
+  "tags": [
+    "dev",
+    "opencode"
+  ],
   "os": "linux",
-  "readonly": true
+  "readonly": false
 }

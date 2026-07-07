@@ -18,7 +18,14 @@
 | `apt-tsinghua` | 更换清华 apt 源 | 面向 Debian 12（bookworm），写入 `/etc/apt/sources.list.d/debian.sources` |
 | `sshd-setup` | 安装并配置 SSH 服务 | 设置 root 密码、公私钥认证，并通过 supervisord 实现容器重启后自动启动 |
 | `proxychains-setup` | 安装 proxychains | 配置 socks4/socks5/http 代理，支持用户名和密码参数 |
+| `rdp-desktop-setup` | 安装并配置 RDP 桌面 | 复用容器内现有 Xvfb/xfce4，通过 xrdp/x11vnc 暴露 3389，支持 mstsc 实时查看桌面 |
+| `browser-desktop-launch` | 在 RDP 桌面启动浏览器窗口 | 在现有 Xvfb 桌面中启动 Chromium，便于通过 RDP 手动登录或处理验证码 |
+| `trae-ide-setup` | 安装并配置 Trae IDE | 安装 Trae IDE 桌面客户端，并配置 localmodel 与 Volcano Engine Coding Plan 两个大模型 |
+| `vscode-setup` | 安装并配置 VS Code | 安装 VS Code 桌面客户端，并配置 localmodel 与 Volcano Engine Coding Plan 两个大模型 |
 | `opencode-setup` | 安装 opencode | 从 GitHub 下载最新版，配置 LLM API Key |
+| `qwen-code-setup` | 安装并配置 Qwen Code ACP Agent | 安装 `qwen`，写入 `qwen_code` ACP runner，可配置 OpenAI-compatible API Key、base URL 和模型 |
+| `claude-code-setup` | 安装并配置 Claude Agent ACP | 安装 `claude-agent-acp`，写入 `claude_code` ACP runner，可配置 `ANTHROPIC_API_KEY` |
+| `codex-setup` | 安装并配置 Codex ACP Agent | 安装 `codex-acp`，写入 `codex` ACP runner，可配置 `OPENAI_API_KEY` |
 
 ## 内置方案
 
@@ -26,6 +33,17 @@
 |---|---|---|
 | `minimal` | 最小配置 | apt-tsinghua → sshd-setup |
 | `full-dev` | 完整开发环境 | apt-tsinghua → sshd-setup → proxychains-setup → opencode-setup |
+
+## ACP Agent 配置说明
+
+`qwen-code-setup`、`claude-code-setup`、`codex-setup` 会默认修改当前 workspace 的 `agent.json`：
+
+- 在 `acp.agents` 下写入对应 runner：`qwen_code`、`claude_code`、`codex`
+- 默认启用 `tools.agent.delegate_external_agent`，之后可通过内置工具 `delegate_external_agent` 调用外部 ACP runner
+- 默认备份原配置为 `agent.json.bak.YYYYmmddHHMMSS`
+- 如果只安装 CLI、不修改 QwenPaw 配置，可将 `patch_qwenpaw_config` 设为 `false`
+
+API Key 会写入 runner 的 `env`（Claude/Codex）或 Qwen Code 的 `~/.qwen/settings.json`（Qwen Code）。执行脚本时不要把真实密钥粘贴到公开日志或聊天中。
 
 ## 快速开始
 

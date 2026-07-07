@@ -1,0 +1,59 @@
+{
+  "id": "browser-desktop-launch",
+  "name": "在 RDP 桌面启动浏览器窗口",
+  "description": "在 QwenPaw 容器已有的 Xvfb/xfce4 桌面（默认 DISPLAY=:1）中启动 Chromium 窗口。运行后，用 mstsc 连接 RDP 桌面即可看到浏览器界面，并可手动登录网页。适合需要人工处理验证码、扫码、登录等场景。注意：这不会把当前 agent 的 browser_use 页面搬进 RDP 桌面；它是在 RDP 桌面内额外启动一个浏览器窗口。",
+  "type": "shell",
+  "code": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\nBROWSER_URL=\"{{browser_url}}\"\nBROWSER_DISPLAY=\"{{browser_display}}\"\nBROWSER_USER_DATA_DIR=\"{{browser_user_data_dir}}\"\nBROWSER_WINDOW_SIZE=\"{{browser_window_size}}\"\nBROWSER_CDP_PORT=\"{{browser_cdp_port}}\"\nCHROMIUM_BIN=\"{{chromium_binary}}\"\n\nif [ -z \"$BROWSER_URL\" ]; then\n  echo \"browser_url is required.\"\n  exit 1\nfi\n\nif ! command -v apt-get >/dev/null 2>&1; then\n  echo \"apt-get not found; this script is intended for Debian/Ubuntu based QwenPaw containers.\"\n  exit 1\nfi\n\nif [ ! -x \"$CHROMIUM_BIN\" ]; then\n  apt-get update -qq\n  apt-get install -y -qq --no-install-recommends chromium\nfi\n\nmkdir -p \"$BROWSER_USER_DATA_DIR\"\n\n# Stop any previous Chromium launched by this supervisor program to avoid duplicate windows.\nif command -v pkill >/dev/null 2>&1; then\n  pkill -f \"--user-data-dir=$BROWSER_USER_DATA_DIR\" >/dev/null 2>&1 || true\nfi\n\ncat > /etc/supervisor/conf.d/browser-desktop.conf <<CONF\n[program:browser-desktop]\ncommand=/bin/sh -c 'export DISPLAY=\"${BROWSER_DISPLAY}\"; export BROWSER_URL=\"${BROWSER_URL}\"; export USER_DATA_DIR=\"${BROWSER_USER_DATA_DIR}\"; export WINDOW_SIZE=\"${BROWSER_WINDOW_SIZE}\"; export CDP_PORT=\"${BROWSER_CDP_PORT}\"; XSOCK=\"/tmp/.X11-unix/X\\${DISPLAY#:}\"; for i in \\$(seq 1 200); do [ -S \"\\$XSOCK\" ] && break; sleep 0.1; done; exec \"$CHROMIUM_BIN\" --no-sandbox --disable-dev-shm-usage --disable-gpu --window-size=\"\\$WINDOW_SIZE\" --user-data-dir=\"\\$USER_DATA_DIR\" --remote-debugging-port=\"\\$CDP_PORT\" \"\\$BROWSER_URL\"'\nautostart=true\nautorestart=true\npriority=30\nstopasgroup=true\nkillasgroup=true\nstderr_logfile=/var/log/browser-desktop.err.log\nstdout_logfile=/var/log/browser-desktop.out.log\nCONF\n\nif command -v supervisorctl >/dev/null 2>&1; then\n  supervisorctl reread >/dev/null 2>&1 || true\n  supervisorctl update >/dev/null 2>&1 || true\n  supervisorctl restart browser-desktop >/dev/null 2>&1 || supervisorctl start browser-desktop >/dev/null 2>&1 || true\nfi\n\necho \"Browser desktop launch setup complete.\"\necho \"  URL: $BROWSER_URL\"\necho \"  DISPLAY: $BROWSER_DISPLAY\"\necho \"  User data dir: $BROWSER_USER_DATA_DIR\"\necho \"  CDP port: $BROWSER_CDP_PORT\"\necho \"\"\necho \"Open mstsc to the RDP desktop and you should see Chromium.\"\n",
+  "params": {
+    "browser_url": {
+      "type": "input",
+      "label": "浏览器打开的 URL",
+      "required": true,
+      "default": "https://www.baidu.com",
+      "options": []
+    },
+    "browser_display": {
+      "type": "input",
+      "label": "RDP 桌面的 DISPLAY",
+      "required": true,
+      "default": ":1",
+      "options": []
+    },
+    "browser_user_data_dir": {
+      "type": "input",
+      "label": "浏览器用户数据目录",
+      "required": true,
+      "default": "/tmp/qwenpaw-rdp-browser",
+      "options": []
+    },
+    "browser_window_size": {
+      "type": "input",
+      "label": "浏览器窗口大小",
+      "required": true,
+      "default": "1280x800",
+      "options": []
+    },
+    "browser_cdp_port": {
+      "type": "input",
+      "label": "浏览器 CDP 端口（可选调试）",
+      "required": true,
+      "default": "9222",
+      "options": []
+    },
+    "chromium_binary": {
+      "type": "input",
+      "label": "Chromium 路径",
+      "required": true,
+      "default": "/usr/bin/chromium",
+      "options": []
+    }
+  },
+  "tags": [
+    "system",
+    "desktop",
+    "browser",
+    "rdp"
+  ],
+  "os": "linux",
+  "readonly": false
+}

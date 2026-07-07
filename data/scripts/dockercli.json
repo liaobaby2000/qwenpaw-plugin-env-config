@@ -1,0 +1,11 @@
+{
+  "id": "dockercli",
+  "name": "dockercli",
+  "description": "安装docker-cli和docker compose，不安装docker，qwenpaw容器通过-v /var/run/docker.sock:/var/run/docker.sock挂载到宿主机，对docker进行使用。",
+  "type": "shell",
+  "code": "#!/bin/bash\nset -euo pipefail\n\nexport DEBIAN_FRONTEND=noninteractive\napt-get update\napt-get install -y curl vim wget gnupg dpkg apt-transport-https lsb-release ca-certificates\ncurl -sS https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/debian/gpg | gpg --dearmor > /usr/share/keyrings/docker-ce.gpg\necho \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-ce.gpg] https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/debian $(lsb_release -sc) stable\" > /etc/apt/sources.list.d/docker.list\napt-get update \napt-get install -y docker-ce-cli docker-compose-plugin",
+  "params": {},
+  "tags": [],
+  "os": "",
+  "readonly": false
+}

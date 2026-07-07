@@ -1,0 +1,114 @@
+{
+  "id": "qwen-code-setup",
+  "name": "安装并配置 Qwen Code ACP Agent",
+  "description": "安装 Qwen Code（qwen）并写入 QwenPaw 当前 workspace 的 ACP runner 配置，用于 delegate_external_agent 调用。",
+  "type": "shell",
+  "code": "#!/bin/bash\nset -euo pipefail\n\nRUNNER_NAME=\"{{runner_name}}\"\nINSTALL_METHOD=\"{{install_method}}\"\nVERSION=\"{{version}}\"\nWORKSPACE_DIR=\"{{workspace_dir}}\"\nPATCH_CONFIG=\"{{patch_qwenpaw_config}}\"\nENABLE_DELEGATE_TOOL=\"{{enable_delegate_tool}}\"\nAPI_KEY=\"{{api_key}}\"\nAPI_KEY_ENV=\"{{api_key_env}}\"\nAPI_BASE_URL=\"{{api_base_url}}\"\nMODEL_ID=\"{{model_id}}\"\nTOOL_PARSE_MODE=\"{{tool_parse_mode}}\"\nSTDIO_LIMIT=\"{{stdio_buffer_limit_bytes}}\"\n\nif ! command -v npm >/dev/null 2>&1; then\n  echo \"ERROR: npm is required. Install Node.js/npm first.\" >&2\n  exit 1\nfi\n\nif [[ \"$INSTALL_METHOD\" == \"global\" ]]; then\n  SPEC=\"@qwen-code/qwen-code\"\n  if [[ -n \"$VERSION\" && \"$VERSION\" != \"latest\" ]]; then\n    SPEC=\"${SPEC}@${VERSION}\"\n  fi\n  echo \"Installing Qwen Code globally: $SPEC\"\n  npm install -g \"$SPEC\"\n  hash -r\n  if ! command -v qwen >/dev/null 2>&1; then\n    echo \"ERROR: qwen command not found after npm install\" >&2\n    exit 1\n  fi\n  echo \"Qwen Code command is available: $(command -v qwen)\"\nelif [[ \"$INSTALL_METHOD\" == \"npx\" ]]; then\n  echo \"Verifying npx can run @qwen-code/qwen-code\"\n  echo \"Configured npx command: npx -y @qwen-code/qwen-code -- --acp\"\nelse\n  echo \"Skipping Qwen Code install because install_method=skip\"\n  if ! command -v qwen >/dev/null 2>&1; then\n    echo \"ERROR: qwen command not found. Choose install_method=global/npx or install Qwen Code first.\" >&2\n    exit 1\n  fi\n  echo \"Qwen Code command is available: $(command -v qwen)\"\nfi\n\nif [[ \"$PATCH_CONFIG\" != \"true\" ]]; then\n  echo \"Skipping QwenPaw agent.json patch because patch_qwenpaw_config=false\"\n  exit 0\nfi\n\nAGENT_JSON=\"$WORKSPACE_DIR/agent.json\"\nif [[ ! -f \"$AGENT_JSON\" ]]; then\n  echo \"ERROR: agent.json not found: $AGENT_JSON\" >&2\n  exit 1\nfi\n\nBACKUP=\"$AGENT_JSON.bak.$(date +%Y%m%d%H%M%S)\"\ncp -a \"$AGENT_JSON\" \"$BACKUP\"\necho \"Backed up agent config: $BACKUP\"\n\npython3 - \"$AGENT_JSON\" \"$RUNNER_NAME\" \"$INSTALL_METHOD\" \"$API_KEY\" \"$API_KEY_ENV\" \"$API_BASE_URL\" \"$MODEL_ID\" \"$TOOL_PARSE_MODE\" \"$STDIO_LIMIT\" \"$ENABLE_DELEGATE_TOOL\" <<'PY'\nimport json\nimport os\nimport sys\nfrom pathlib import Path\n\nagent_json = Path(sys.argv[1])\nrunner_name = sys.argv[2]\ninstall_method = sys.argv[3]\napi_key = sys.argv[4]\napi_key_env = sys.argv[5]\napi_base_url = sys.argv[6]\nmodel_id = sys.argv[7]\ntool_parse_mode = sys.argv[8]\nstdio_limit = sys.argv[9]\nenable_delegate_tool = sys.argv[10]\n\nif install_method == \"npx\":\n    command = \"npx\"\n    args = [\"-y\", \"@qwen-code/qwen-code\", \"--\", \"--acp\"]\nelse:\n    command = \"qwen\"\n    args = [\"--acp\"]\n\nenv = {}\nif api_base_url:\n    env[\"OPENAI_BASE_URL\"] = api_base_url\n\nrunner_cfg = {\n    \"enabled\": True,\n    \"command\": command,\n    \"args\": args,\n    \"env\": env,\n    \"trusted\": True,\n    \"tool_parse_mode\": tool_parse_mode,\n    \"stdio_buffer_limit_bytes\": int(stdio_limit),\n}\n\ndata = json.loads(agent_json.read_text(encoding=\"utf-8\"))\n\n# Configure ACP runner\ndata.setdefault(\"acp\", {}).setdefault(\"agents\", {})[runner_name] = runner_cfg\n\n# Make delegate_external_agent available if requested\nif enable_delegate_tool == \"true\":\n    data.setdefault(\"tools\", {}).setdefault(\"agent\", {}).setdefault(\"delegate_external_agent\", {})\n    data[\"tools\"][\"agent\"][\"delegate_external_agent\"].update({\n        \"name\": \"delegate_external_agent\",\n        \"enabled\": True,\n        \"description\": \"Delegate work to an external ACP agent runner\",\n        \"display_to_user\": True,\n        \"async_execution\": False,\n        \"icon\": \"📡\",\n        \"config\": {},\n    })\n\nagent_json.write_text(json.dumps(data, indent=2, ensure_ascii=False) + \"\\n\", encoding=\"utf-8\")\n\n# Configure Qwen Code settings separately so API key/model are not stored in agent.json.\nsettings_path = Path.home() / \".qwen\" / \"settings.json\"\nif model_id or api_key_env or api_base_url:\n    if settings_path.exists():\n        settings = json.loads(settings_path.read_text(encoding=\"utf-8\"))\n    else:\n        settings = {}\n\n    providers = settings.setdefault(\"modelProviders\", {}).setdefault(\"openai\", [])\n    provider = {\n        \"id\": model_id or \"openai-compatible\",\n        \"name\": model_id or \"OpenAI Compatible\",\n    }\n    if api_key_env:\n        provider[\"envKey\"] = api_key_env\n    if api_base_url:\n        provider[\"baseUrl\"] = api_base_url\n\n    replaced = False\n    for i, item in enumerate(providers):\n        if item.get(\"id\") == provider[\"id\"]:\n            providers[i] = provider\n            replaced = True\n            break\n    if not replaced:\n        providers.append(provider)\n\n    if api_key_env and api_key:\n        settings.setdefault(\"env\", {})[api_key_env] = api_key\n    if model_id:\n        settings[\"security\"] = settings.get(\"security\", {})\n        settings[\"security\"][\"auth\"] = settings[\"security\"].get(\"auth\", {})\n        settings[\"security\"][\"auth\"][\"selectedType\"] = \"openai\"\n        settings[\"model\"] = {\"name\": model_id}\n\n    settings_path.parent.mkdir(parents=True, exist_ok=True)\n    settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + \"\\n\", encoding=\"utf-8\")\n    os.chmod(settings_path, 0o600)\n    print(f\"Configured Qwen Code settings: {settings_path}\")\nelse:\n    print(\"No Qwen Code model/API settings were written.\")\n\nprint(f\"Configured ACP runner '{runner_name}' in {agent_json}\")\nprint(\"Refresh QwenPaw or reopen the Workspace -> ACP page to use it.\")\nPY\n",
+  "params": {
+    "install_method": {
+      "type": "select",
+      "label": "安装方式",
+      "required": true,
+      "default": "global",
+      "options": [
+        "global",
+        "npx",
+        "skip"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "label": "npm 版本（留空或 latest 表示最新版）",
+      "required": false,
+      "default": "latest",
+      "options": []
+    },
+    "workspace_dir": {
+      "type": "string",
+      "label": "QwenPaw workspace 目录",
+      "required": true,
+      "default": "/app/working/workspaces/coder",
+      "options": []
+    },
+    "patch_qwenpaw_config": {
+      "type": "select",
+      "label": "写入 QwenPaw agent.json",
+      "required": true,
+      "default": "true",
+      "options": [
+        "true",
+        "false"
+      ]
+    },
+    "enable_delegate_tool": {
+      "type": "select",
+      "label": "启用 delegate_external_agent 工具",
+      "required": true,
+      "default": "true",
+      "options": [
+        "true",
+        "false"
+      ]
+    },
+    "runner_name": {
+      "type": "string",
+      "label": "QwenPaw ACP runner 名称",
+      "required": true,
+      "default": "qwen_code",
+      "options": []
+    },
+    "api_key": {
+      "type": "string",
+      "label": "API Key（可选；OpenAI-compatible 模式）",
+      "required": false,
+      "default": "xxxxxxxxxxxxxxxxxxx",
+      "options": []
+    },
+    "api_key_env": {
+      "type": "string",
+      "label": "API Key 环境变量名",
+      "required": false,
+      "default": "OPENAI_API_KEY",
+      "options": []
+    },
+    "api_base_url": {
+      "type": "string",
+      "label": "OpenAI-compatible API 地址",
+      "required": false,
+      "default": "http://127.0.0.1:8020/v1",
+      "options": []
+    },
+    "model_id": {
+      "type": "string",
+      "label": "模型名称",
+      "required": false,
+      "default": "Qwen3.6-27B-MTP-UD-Q4_K_XL.gguf",
+      "options": []
+    },
+    "tool_parse_mode": {
+      "type": "select",
+      "label": "ACP tool_parse_mode",
+      "required": true,
+      "default": "call_detail",
+      "options": [
+        "call_detail",
+        "call_title",
+        "update_detail"
+      ]
+    },
+    "stdio_buffer_limit_bytes": {
+      "type": "string",
+      "label": "stdio 缓冲上限（bytes）",
+      "required": true,
+      "default": "52428800",
+      "options": []
+    }
+  },
+  "tags": [
+    "dev",
+    "acp",
+    "qwen_code"
+  ],
+  "os": "linux",
+  "readonly": false
+}
